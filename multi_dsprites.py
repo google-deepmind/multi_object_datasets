@@ -1,4 +1,4 @@
-# Copyright 2018 The Multi-Object Datasets Authors. All Rights Reserved.
+# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,14 +20,15 @@ import tensorflow as tf
 
 COMPRESSION_TYPE = tf.io.TFRecordOptions.get_compression_type_string('GZIP')
 IMAGE_SIZE = [64, 64]
-MAX_NUM_ENTITIES_DICT = {
-    # The maximum number of foreground and background entities in each variant
-    # of the provided datasets. The values correspond to the number of
-    # segmentation masks returned per scene.
+# The maximum number of foreground and background entities in each variant
+# of the provided datasets. The values correspond to the number of
+# segmentation masks returned per scene.
+MAX_NUM_ENTITIES = {
     'binarized': 4,
     'colored_on_grayscale': 6,
     'colored_on_colored': 5
 }
+BYTE_FEATURES = ['mask', 'image']
 
 
 def feature_descriptions(max_num_entities, is_grayscale=False):
@@ -41,11 +42,12 @@ def feature_descriptions(max_num_entities, is_grayscale=False):
       to be RGB.
 
   Returns:
-    A dictionary of feature descriptions.
+    A dictionary which maps feature names to `tf.Example`-compatible shape and
+    data type descriptors.
   """
 
   num_channels = 1 if is_grayscale else 3
-  features = {
+  return {
       'image': tf.FixedLenFeature(IMAGE_SIZE+[num_channels], tf.string),
       'mask': tf.FixedLenFeature(IMAGE_SIZE+[max_num_entities, 1], tf.string),
       'x': tf.FixedLenFeature([max_num_entities], tf.float32),
@@ -56,15 +58,16 @@ def feature_descriptions(max_num_entities, is_grayscale=False):
       'orientation': tf.FixedLenFeature([max_num_entities], tf.float32),
       'scale': tf.FixedLenFeature([max_num_entities], tf.float32),
   }
-  return features
 
 
 def _decode(example_proto, features):
   # Parse the input `tf.Example` proto using a feature description dictionary.
   single_example = tf.parse_single_example(example_proto, features)
-  for k in ['mask', 'image']:
+  for k in BYTE_FEATURES:
     single_example[k] = tf.squeeze(tf.decode_raw(single_example[k], tf.uint8),
                                    axis=-1)
+  # To return masks in the canonical [entities, height, width, channels] format,
+  # we need to transpose the tensor axes.
   single_example['mask'] = tf.transpose(single_example['mask'], [2, 0, 1, 3])
   return single_example
 
@@ -87,16 +90,15 @@ def dataset(tfrecords_path, dataset_variant, read_buffer_size=None,
   Returns:
     An unbatched `tf.data.TFRecordDataset`.
   """
-  if dataset_variant not in MAX_NUM_ENTITIES_DICT:
+  if dataset_variant not in MAX_NUM_ENTITIES:
     raise ValueError('Invalid `dataset_variant` provided. The supported values'
-                     ' are: {}'.format(MAX_NUM_ENTITIES_DICT.keys()))
-  max_num_entities = MAX_NUM_ENTITIES_DICT[dataset_variant]
+                     ' are: {}'.format(list(MAX_NUM_ENTITIES.keys())))
+  max_num_entities = MAX_NUM_ENTITIES[dataset_variant]
   is_grayscale = dataset_variant == 'binarized'
   raw_dataset = tf.data.TFRecordDataset(
       tfrecords_path, compression_type=COMPRESSION_TYPE,
       buffer_size=read_buffer_size)
   features = feature_descriptions(max_num_entities, is_grayscale)
   partial_decode_fn = functools.partial(_decode, features=features)
-  parsed_dataset = raw_dataset.map(partial_decode_fn,
-                                   num_parallel_calls=map_parallel_calls)
-  return parsed_dataset
+  return raw_dataset.map(partial_decode_fn,
+                         num_parallel_calls=map_parallel_calls)

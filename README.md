@@ -1,27 +1,28 @@
-This repository contains the following datasets for multi-object representation
-learning, used in developing scene decomposition methods like
+This repository contains datasets for multi-object representation learning, used
+in developing scene decomposition methods like
 [MONet](https://arxiv.org/abs/1901.11390) [1] and
-[IODINE](http://proceedings.mlr.press/v97/greff19a.html) [2]:
+[IODINE](http://proceedings.mlr.press/v97/greff19a.html) [2]. The datasets we
+provide are:
 
-1.  Multi-dSprites
-2.  Objects Room
-3.  CLEVR (with masks)
-4.  Tetris
+1.  [Multi-dSprites](#multi-dsprites)
+2.  [Objects Room](#objects-room)
+3.  [CLEVR (with masks)](#clevr-with-masks)
+4.  [Tetris](#tetris)
 
-<p align="center">
-  <img src="preview.png" width=546 height= 564>
-</p>
+![preview](preview.png)
 
 The datasets consist of multi-object scenes. Each image is accompanied by
 ground-truth segmentation masks for all objects in the scene. We also provide
 per-object generative factors (except in Objects Room) to facilitate
-representation learning.
+representation learning. The generative factors include all necessary and
+sufficient features (size, color, position, etc.) to describe and render the
+objects present in a scene.
 
 Lastly, the `segmentation_metrics` module contains a TensorFlow implementation
 of the
 [Adjusted Rand index](https://en.wikipedia.org/wiki/Rand_index#Adjusted_Rand_index),
 which can be used to compare inferred object segmentations with ground-truth
-segmentation masks.
+segmentation masks. All code has been tested to work with TensorFlow r1.14.
 
 ## Bibtex
 
@@ -64,8 +65,8 @@ binary feature indicating which objects are not null.
 
 ### Objects Room
 
-This dataset is based on the Mujoco environment used by the Generative Query
-Network (Eslami et al. 2018) and is a multi-object extension of the
+This dataset is based on the [MuJoCo](http://www.mujoco.org/) environment used
+by the Generative Query Network [3] and is a multi-object extension of the
 [3d-shapes dataset](https://github.com/deepmind/3d-shapes). The training set
 contains 1M scenes with up to three objects. We also provide ~1K test examples
 for the following variants:
@@ -81,12 +82,14 @@ Datapoints consist of an image and fixed number of masks. The first four masks
 correspond to the sky, floor, and two halves of the wall respectively. The
 remaining masks correspond to the foreground objects.
 
-### CLEVR
+### CLEVR (with masks)
 
 We adapted the
 [open-source script](https://github.com/facebookresearch/clevr-dataset-gen)
-provided by Johnson et al. 2017 to produce ground-truth segmentation masks for
-all objects in the CLEVR scene. We ignore the original question-answering task.
+provided by Johnson et al. to produce ground-truth segmentation masks for CLEVR
+[4] scenes. These were generated afresh, so images in this dataset are not
+identical to those in the original CLEVR dataset. We ignore the original
+question-answering task.
 
 The images and masks in the dataset are of size 320x240. We also provide all
 ground-truth factors included in the original dataset (namely `x`, `y`, and `z`
@@ -106,15 +109,24 @@ blue, yellow, magenta, cyan). We provide `x` and `y` position, `shape`, and
 
 The datasets can be downloaded from
 [Google Cloud Storage](https://console.cloud.google.com/storage/browser/multi-object-datasets).
-Each dataset is a single TFRecords file.
+Each dataset is a single
+[TFRecords](https://www.tensorflow.org/tutorials/load_data/tf_records) file. The
+approximate download sizes are:
+
+1.  Multi-dSprites: between 500 MB and 1 GB.
+2.  Objects Room: the training set is 7 GB. The test sets are 6-8 MB.
+3.  CLEVR (with masks): 10.5 GB.
+4.  Tetris: 300 MB.
 
 ## Usage
 
-After downloading the dataset files, you can read them as `tf.data.Dataset`
+After downloading the dataset files, you can read them as
+[`tf.data.Dataset`](https://www.tensorflow.org/api_docs/python/tf/data/Dataset)
 instances with the readers provided. The example below shows how to read the
 colored-sprites-and-background version of Multi-dSprites:
 
 ```
+  import multi_dsprites
   import tensorflow as tf
 
   tf_records_path = 'path/to/multi_dsprites_colored_on_colored.tfrecords'
@@ -129,17 +141,32 @@ colored-sprites-and-background version of Multi-dSprites:
     d = sess.run(data)
 ```
 
+All dataset readers return images and segmentation masks in the following
+canonical format (assuming the dataset is batched as above):
+
+-   'image': `Tensor` of shape [batch_size, height, width, channels] and type
+    uint8.
+
+-   'mask': `Tensor` of shape [batch_size, max_num_entities, height, width,
+    channels] and type uint8. The tensor takes on values of 255 or 0, denoting
+    whether a pixel belongs to a particular entity or not.
+
 You can compare predicted object segmentation masks with the ground-truth masks
 using `segmentation_metrics.adjusted_rand_index` as below:
 
 ```
-  max_num_entities = multi_dsprites.MAX_NUM_ENTITIES_DICT['colored_on_colored']
+  max_num_entities = multi_dsprites.MAX_NUM_ENTITIES['colored_on_colored']
+  # Ground-truth segmentation masks are always returned in the canonical
+  # [batch_size, max_num_entities, height, width, channels] format. To use these
+  # as an input for `segmentation_metrics.adjusted_rand_index`, we need them in
+  # the [batch_size, n_points, n_true_groups] format,
+  # where n_true_groups == max_num_entities. We implement this reshape below.
+  # Note that 'oh' denotes 'one-hot'.
   desired_shape = [batch_size,
                    multi_dsprites.IMAGE_SIZE[0] * multi_dsprites.IMAGE_SIZE[1],
                    max_num_entities]
   true_groups_oh = tf.transpose(data['mask'], [0, 2, 3, 4, 1])
   true_groups_oh = tf.reshape(true_groups_oh, desired_shape)
-  true_groups_oh = tf.cast(true_groups_oh, tf.float32)
 
   random_prediction = tf.random_uniform(desired_shape[:-1],
                                         minval=0, maxval=max_num_entities,
@@ -169,6 +196,15 @@ representation. arXiv preprint arXiv:1901.11390.
 Matthey, L., Botvinick, M. & Lerchner, A. (2019). Multi-Object Representation
 Learning with Iterative Variational Inference. Proceedings of the 36th
 International Conference on Machine Learning, in PMLR 97:2424-2433.
+
+[3] Eslami, S. A., Rezende, D. J., Besse, F., Viola, F., Morcos, A. S., Garnelo,
+M., ... & Reichert, D. P. (2018). Neural scene representation and rendering.
+Science, 360(6394), 1204-1210.
+
+[4] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
+Zitnick, C., & Girshick, R. (2017). Clevr: A diagnostic dataset for
+compositional language and elementary visual reasoning. In Proceedings of the
+IEEE Conference on Computer Vision and Pattern Recognition (pp. 2901-2910).
 
 ## Disclaimers
 

@@ -1,4 +1,4 @@
-# Copyright 2018 The Multi-Object Datasets Authors. All Rights Reserved.
+# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,14 +17,16 @@
 import tensorflow as tf
 
 
-COMPRESSION_TYPE = 'GZIP'
+COMPRESSION_TYPE = tf.io.TFRecordOptions.get_compression_type_string('GZIP')
 IMAGE_SIZE = [240, 320]
-MAX_NUM_ENTITIES = 11  # The maximum number of foreground and background
-                       # entities in the provided dataset. This corresponds to
-                       # the number of segmentation masks returned per scene.
+# The maximum number of foreground and background entities in the provided
+# dataset. This corresponds to the number of segmentation masks returned per
+# scene.
+MAX_NUM_ENTITIES = 11
+BYTE_FEATURES = ['mask', 'image', 'color', 'material', 'shape', 'size']
 
-
-# Create a dictionary describing the dataset features.
+# Create a dictionary mapping feature names to `tf.Example`-compatible
+# shape and data type descriptors.
 features = {
     'image': tf.FixedLenFeature(IMAGE_SIZE+[3], tf.string),
     'mask': tf.FixedLenFeature([MAX_NUM_ENTITIES]+IMAGE_SIZE+[1], tf.string),
@@ -44,7 +46,7 @@ features = {
 def _decode(example_proto):
   # Parse the input `tf.Example` proto using the feature description dict above.
   single_example = tf.parse_single_example(example_proto, features)
-  for k in ['mask', 'image', 'color', 'material', 'shape', 'size']:
+  for k in BYTE_FEATURES:
     single_example[k] = tf.squeeze(tf.decode_raw(single_example[k], tf.uint8),
                                    axis=-1)
   return single_example
@@ -66,6 +68,4 @@ def dataset(tfrecords_path, read_buffer_size=None, map_parallel_calls=None):
   raw_dataset = tf.data.TFRecordDataset(
       tfrecords_path, compression_type=COMPRESSION_TYPE,
       buffer_size=read_buffer_size)
-  parsed_dataset = raw_dataset.map(_decode,
-                                   num_parallel_calls=map_parallel_calls)
-  return parsed_dataset
+  return raw_dataset.map(_decode, num_parallel_calls=map_parallel_calls)

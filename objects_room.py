@@ -1,4 +1,4 @@
-# Copyright 2018 The Multi-Object Datasets Authors. All Rights Reserved.
+# Copyright 2019 DeepMind Technologies Limited. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,15 +20,16 @@ import tensorflow as tf
 
 COMPRESSION_TYPE = tf.io.TFRecordOptions.get_compression_type_string('GZIP')
 IMAGE_SIZE = [64, 64]
-MAX_NUM_ENTITIES_DICT = {
-    # The maximum number of foreground and background entities in each variant
-    # of the provided datasets. The values correspond to the number of
-    # segmentation masks returned per scene.
+# The maximum number of foreground and background entities in each variant
+# of the provided datasets. The values correspond to the number of
+# segmentation masks returned per scene.
+MAX_NUM_ENTITIES = {
     'train': 7,
     'six_objects': 10,
     'empty_room': 4,
     'identical_color': 10
 }
+BYTE_FEATURES = ['mask', 'image']
 
 
 def feature_descriptions(max_num_entities):
@@ -40,19 +41,19 @@ def feature_descriptions(max_num_entities):
       masks returned per scene.
 
   Returns:
-    A dictionary of feature descriptions.
+    A dictionary which maps feature names to `tf.Example`-compatible shape and
+    data type descriptors.
   """
-  features = {
+  return {
       'image': tf.FixedLenFeature(IMAGE_SIZE+[3], tf.string),
       'mask': tf.FixedLenFeature([max_num_entities]+IMAGE_SIZE+[1], tf.string),
   }
-  return features
 
 
 def _decode(example_proto, features):
   # Parse the input `tf.Example` proto using a feature description dictionary.
   single_example = tf.parse_single_example(example_proto, features)
-  for k in ['mask', 'image']:
+  for k in BYTE_FEATURES:
     single_example[k] = tf.squeeze(tf.decode_raw(single_example[k], tf.uint8),
                                    axis=-1)
   return single_example
@@ -76,15 +77,14 @@ def dataset(tfrecords_path, dataset_variant, read_buffer_size=None,
   Returns:
     An unbatched `tf.data.TFRecordDataset`.
   """
-  if dataset_variant not in MAX_NUM_ENTITIES_DICT:
+  if dataset_variant not in MAX_NUM_ENTITIES:
     raise ValueError('Invalid `dataset_variant` provided. The supported values'
-                     ' are: {}'.format(MAX_NUM_ENTITIES_DICT.keys()))
-  max_num_entities = MAX_NUM_ENTITIES_DICT[dataset_variant]
+                     ' are: {}'.format(list(MAX_NUM_ENTITIES.keys())))
+  max_num_entities = MAX_NUM_ENTITIES[dataset_variant]
   raw_dataset = tf.data.TFRecordDataset(
       tfrecords_path, compression_type=COMPRESSION_TYPE,
       buffer_size=read_buffer_size)
   features = feature_descriptions(max_num_entities)
   partial_decode_fn = functools.partial(_decode, features=features)
-  parsed_dataset = raw_dataset.map(partial_decode_fn,
-                                   num_parallel_calls=map_parallel_calls)
-  return parsed_dataset
+  return raw_dataset.map(partial_decode_fn,
+                         num_parallel_calls=map_parallel_calls)
