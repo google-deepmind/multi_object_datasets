@@ -209,8 +209,8 @@ pixels:
 M., & Lerchner, A. (2019). Monet: Unsupervised scene decomposition and
 representation. arXiv preprint arXiv:1901.11390.
 
-[2] Greff, K., Kaufman, R.L., Kabra, R., Watters, N., Burgess, C., Zoran, D.,
-Matthey, L., Botvinick, M. & Lerchner, A. (2019). Multi-Object Representation
+[2] Greff, K., Kaufman, R. L., Kabra, R., Watters, N., Burgess, C., Zoran, D.,
+Matthey, L., Botvinick, M., & Lerchner, A. (2019). Multi-Object Representation
 Learning with Iterative Variational Inference. Proceedings of the 36th
 International Conference on Machine Learning, in PMLR 97:2424-2433.
 
@@ -220,7 +220,7 @@ methods. Journal of the American Statistical association, 66(336), 846-850.
 [4] Eslami, S., Rezende, D. J., Besse, F., Viola, F., Morcos, A., Garnelo, M.,
 Ruderman, A., Rusu, A., Danihelka, I., Gregor, K., Reichert, D., Buesing, L.,
 Weber, T., Vinyals, O., Rosenbaum, D., Rabinowitz, N., King, H., Hillier, C.,
-Botvinick, M., Wierstra, D., Kavukcuoglu, K. and Hassabis, D. (2018). Neural
+Botvinick, M., Wierstra, D., Kavukcuoglu, K., & Hassabis, D. (2018). Neural
 scene representation and rendering. Science, 360(6394), 1204-1210.
 
 [5] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
