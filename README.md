@@ -1,3 +1,5 @@
+# Multi-Object Datasets
+
 This repository contains datasets for multi-object representation learning, used
 in developing scene decomposition methods like
 [MONet](https://arxiv.org/abs/1901.11390) [1] and
@@ -7,7 +9,7 @@ provide are:
 1.  [Multi-dSprites](#multi-dsprites)
 2.  [Objects Room](#objects-room)
 3.  [CLEVR (with masks)](#clevr-with-masks)
-4.  [Tetris](#tetris)
+4.  [Tetrominoes](#tetrominoes)
 
 ![preview](preview.png)
 
@@ -20,9 +22,10 @@ objects present in a scene.
 
 Lastly, the `segmentation_metrics` module contains a TensorFlow implementation
 of the
-[Adjusted Rand index](https://en.wikipedia.org/wiki/Rand_index#Adjusted_Rand_index),
-which can be used to compare inferred object segmentations with ground-truth
-segmentation masks. All code has been tested to work with TensorFlow r1.14.
+[adjusted Rand index](https://en.wikipedia.org/wiki/Rand_index#Adjusted_Rand_index)
+[3], which can be used to compare inferred object segmentations with
+ground-truth segmentation masks. All code has been tested to work with
+TensorFlow r1.14.
 
 ## Bibtex
 
@@ -66,7 +69,7 @@ binary feature indicating which objects are not null.
 ### Objects Room
 
 This dataset is based on the [MuJoCo](http://www.mujoco.org/) environment used
-by the Generative Query Network [3] and is a multi-object extension of the
+by the Generative Query Network [4] and is a multi-object extension of the
 [3d-shapes dataset](https://github.com/deepmind/3d-shapes). The training set
 contains 1M scenes with up to three objects. We also provide ~1K test examples
 for the following variants:
@@ -87,7 +90,7 @@ remaining masks correspond to the foreground objects.
 We adapted the
 [open-source script](https://github.com/facebookresearch/clevr-dataset-gen)
 provided by Johnson et al. to produce ground-truth segmentation masks for CLEVR
-[4] scenes. These were generated afresh, so images in this dataset are not
+[5] scenes. These were generated afresh, so images in this dataset are not
 identical to those in the original CLEVR dataset. We ignore the original
 question-answering task.
 
@@ -97,26 +100,40 @@ position, `pixel_coords`, and `rotation`, which are real-valued; plus `size`,
 `material`, `shape`, and `color`, which are encoded as integers) along with a
 `visibility` vector to indicate which objects are not null.
 
-### Tetris
+### Tetrominoes
 
-Each 35x35 image contains three tetraminos, sampled from 17 unique
-shapes/orientations. Each tetramino has one of six possible colors (red, green,
-blue, yellow, magenta, cyan). We provide `x` and `y` position, `shape`, and
-`color` (integer-coded) as ground-truth features. Datapoints also include a
-`visibility` vector.
+This is a dataset of Tetris-like shapes (aka tetrominoes). Each 35x35 image
+contains three tetrominoes, sampled from 17 unique shapes/orientations. Each
+tetromino has one of six possible colors (red, green, blue, yellow, magenta,
+cyan). We provide `x` and `y` position, `shape`, and `color` (integer-coded) as
+ground-truth features. Datapoints also include a `visibility` vector.
 
 ## Download
 
 The datasets can be downloaded from
 [Google Cloud Storage](https://console.cloud.google.com/storage/browser/multi-object-datasets).
 Each dataset is a single
-[TFRecords](https://www.tensorflow.org/tutorials/load_data/tf_records) file. The
-approximate download sizes are:
+[TFRecords](https://www.tensorflow.org/tutorials/load_data/tf_records) file. To
+download a particular dataset, use the web interface, or run `wget` with the
+appropriate filename as follows:
+
+```shell
+  wget https://storage.googleapis.com/multi-object-datasets/multi_dsprites/multi_dsprites_colored_on_colored.tfrecords
+```
+
+To download all datasets, you'll need the `gsutil` tool, which comes with the
+[Google Cloud SDK](https://cloud.google.com/sdk/docs/). Simply run:
+
+```shell
+  gsutil cp -r gs://multi-object-datasets .
+```
+
+The approximate download sizes are:
 
 1.  Multi-dSprites: between 500 MB and 1 GB.
 2.  Objects Room: the training set is 7 GB. The test sets are 6-8 MB.
 3.  CLEVR (with masks): 10.5 GB.
-4.  Tetris: 300 MB.
+4.  Tetrominoes: 300 MB.
 
 ## Usage
 
@@ -125,7 +142,7 @@ After downloading the dataset files, you can read them as
 instances with the readers provided. The example below shows how to read the
 colored-sprites-and-background version of Multi-dSprites:
 
-```
+```python
   import multi_dsprites
   import tensorflow as tf
 
@@ -154,7 +171,7 @@ canonical format (assuming the dataset is batched as above):
 You can compare predicted object segmentation masks with the ground-truth masks
 using `segmentation_metrics.adjusted_rand_index` as below:
 
-```
+```python
   max_num_entities = multi_dsprites.MAX_NUM_ENTITIES['colored_on_colored']
   # Ground-truth segmentation masks are always returned in the canonical
   # [batch_size, max_num_entities, height, width, channels] format. To use these
@@ -181,7 +198,7 @@ To exclude all background pixels from the ARI score (as in [2]), you can compute
 it as follows instead. This assumes the first true group contains all background
 pixels:
 
-```
+```python
   ari_nobg = segmentation_metrics.adjusted_rand_index(true_groups_oh[..., 1:],
                                                       random_prediction_oh)
 ```
@@ -197,11 +214,16 @@ Matthey, L., Botvinick, M. & Lerchner, A. (2019). Multi-Object Representation
 Learning with Iterative Variational Inference. Proceedings of the 36th
 International Conference on Machine Learning, in PMLR 97:2424-2433.
 
-[3] Eslami, S. A., Rezende, D. J., Besse, F., Viola, F., Morcos, A. S., Garnelo,
-M., ... & Reichert, D. P. (2018). Neural scene representation and rendering.
-Science, 360(6394), 1204-1210.
+[3] Rand, W. M. (1971). Objective criteria for the evaluation of clustering
+methods. Journal of the American Statistical association, 66(336), 846-850.
 
-[4] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
+[4] Eslami, S., Rezende, D. J., Besse, F., Viola, F., Morcos, A., Garnelo, M.,
+Ruderman, A., Rusu, A., Danihelka, I., Gregor, K., Reichert, D., Buesing, L.,
+Weber, T., Vinyals, O., Rosenbaum, D., Rabinowitz, N., King, H., Hillier, C.,
+Botvinick, M., Wierstra, D., Kavukcuoglu, K. and Hassabis, D. (2018). Neural
+scene representation and rendering. Science, 360(6394), 1204-1210.
+
+[5] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
 Zitnick, C., & Girshick, R. (2017). Clevr: A diagnostic dataset for
 compositional language and elementary visual reasoning. In Proceedings of the
 IEEE Conference on Computer Vision and Pattern Recognition (pp. 2901-2910).

@@ -51,8 +51,8 @@ def adjusted_rand_index(true_mask, pred_mask, name='ari_score'):
       sklearn.metrics.adjusted_rand_score.html
   """
   with tf.name_scope(name):
-    _, n_points, n_true_groups = true_mask.get_shape().as_list()
-    n_pred_groups = pred_mask.get_shape().as_list()[-1]
+    _, n_points, n_true_groups = true_mask.shape.as_list()
+    n_pred_groups = pred_mask.shape.as_list()[-1]
     if n_points <= n_true_groups and n_points <= n_pred_groups:
       # This rules out the n_true_groups == n_pred_groups == n_points
       # corner case, and also n_true_groups == n_pred_groups == 0, since
