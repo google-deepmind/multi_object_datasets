@@ -143,7 +143,7 @@ instances with the readers provided. The example below shows how to read the
 colored-sprites-and-background version of Multi-dSprites:
 
 ```python
-  import multi_dsprites
+  from multi_object_datasets import multi_dsprites
   import tensorflow as tf
 
   tf_records_path = 'path/to/multi_dsprites_colored_on_colored.tfrecords'
