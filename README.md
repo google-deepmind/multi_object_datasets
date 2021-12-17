@@ -2,20 +2,22 @@
 
 This repository contains datasets for multi-object representation learning, used
 in developing scene decomposition methods like
-[MONet](https://arxiv.org/abs/1901.11390) [1] and
-[IODINE](http://proceedings.mlr.press/v97/greff19a.html) [2]. The datasets we
-provide are:
+[MONet](https://arxiv.org/abs/1901.11390) [1],
+[IODINE](http://proceedings.mlr.press/v97/greff19a.html) [2], and [SIMONe](https://papers.nips.cc/paper/2021/hash/a860a7886d7c7e2a8d3eaac96f76dc0d-Abstract.html)
+[3]. The datasets we provide are:
 
 1.  [Multi-dSprites](#multi-dsprites)
 2.  [Objects Room](#objects-room)
 3.  [CLEVR (with masks)](#clevr-with-masks)
 4.  [Tetrominoes](#tetrominoes)
+5.  [CATER (with masks)](#cater-with-masks)
 
-![preview](preview.png)
+![preview](preview.gif)
 
-The datasets consist of multi-object scenes. Each image is accompanied by
-ground-truth segmentation masks for all objects in the scene. We also provide
-per-object generative factors (except in Objects Room) to facilitate
+The datasets consist of multi-object scenes. Each image or video is accompanied by
+ground-truth segmentation masks for all objects in the scene. For some datasets
+(excluding Objects Room and CATER), we also provide
+per-object generative factors to facilitate
 representation learning. The generative factors include all necessary and
 sufficient features (size, color, position, etc.) to describe and render the
 objects present in a scene.
@@ -23,7 +25,7 @@ objects present in a scene.
 Lastly, the `segmentation_metrics` module contains a TensorFlow implementation
 of the
 [adjusted Rand index](https://en.wikipedia.org/wiki/Rand_index#Adjusted_Rand_index)
-[3], which can be used to compare inferred object segmentations with
+[4], which can be used to compare inferred object segmentations with
 ground-truth segmentation masks. All code has been tested to work with
 TensorFlow r1.14.
 
@@ -69,7 +71,7 @@ binary feature indicating which objects are not null.
 ### Objects Room
 
 This dataset is based on the [MuJoCo](http://www.mujoco.org/) environment used
-by the Generative Query Network [4] and is a multi-object extension of the
+by the Generative Query Network [5] and is a multi-object extension of the
 [3d-shapes dataset](https://github.com/deepmind/3d-shapes). The training set
 contains 1M scenes with up to three objects. We also provide ~1K test examples
 for the following variants:
@@ -90,7 +92,7 @@ remaining masks correspond to the foreground objects.
 We adapted the
 [open-source script](https://github.com/facebookresearch/clevr-dataset-gen)
 provided by Johnson et al. to produce ground-truth segmentation masks for CLEVR
-[5] scenes. These were generated afresh, so images in this dataset are not
+[6] scenes. These were generated afresh, so images in this dataset are not
 identical to those in the original CLEVR dataset. We ignore the original
 question-answering task.
 
@@ -107,6 +109,26 @@ contains three tetrominoes, sampled from 17 unique shapes/orientations. Each
 tetromino has one of six possible colors (red, green, blue, yellow, magenta,
 cyan). We provide `x` and `y` position, `shape`, and `color` (integer-coded) as
 ground-truth features. Datapoints also include a `visibility` vector.
+
+### CATER (with masks)
+
+We adapted the
+[open-source script](https://github.com/rohitgirdhar/CATER)
+provided by Girdhar et al. to produce ground-truth segmentation masks for CATER
+[7] videos. We use identical settings as the `max2action_cameramotion` version
+of the dataset, containing a moving camera and up to two moving objects at any
+time. We ignore the original tasks.
+
+The videos and masks we provide are of size 64x64, obtained by taking a central
+crop and downscaling the original 320x240 images. Each video contains 33 frames.
+For each frame we also provide a 4x4 `camera_matrix` containing the orientation
+and position of the camera, and `object_positions` containing the 3D allocentric
+positions of all objects in the scene.
+
+Note that each split (train and test) of this dataset is sharded across
+100 TFRecord files. To load either split fully, pass all corresponding filenames
+into the dataset loader.
+
 
 ## Download
 
@@ -134,6 +156,7 @@ The approximate download sizes are:
 2.  Objects Room: the training set is 7 GB. The test sets are 6-8 MB.
 3.  CLEVR (with masks): 10.5 GB.
 4.  Tetrominoes: 300 MB.
+5.  CATER (with masks): the training set is 8 GB. The test set is 4 GB.
 
 ## Usage
 
@@ -162,11 +185,14 @@ All dataset readers return images and segmentation masks in the following
 canonical format (assuming the dataset is batched as above):
 
 -   'image': `Tensor` of shape [batch_size, height, width, channels] and type
-    uint8.
+    uint8. For video datasets, the shape is [batch_size, sequence_length,
+    height, width, channels].
 
 -   'mask': `Tensor` of shape [batch_size, max_num_entities, height, width,
-    channels] and type uint8. The tensor takes on values of 255 or 0, denoting
-    whether a pixel belongs to a particular entity or not.
+    channels] and type uint8.  For video datasets, the shape is [batch_size,
+    sequence_length, max_num_entities, height, width, channels]. The tensor
+    takes on values of 255 or 0, denoting whether a pixel belongs to a
+    particular entity or not.
 
 You can compare predicted object segmentation masks with the ground-truth masks
 using `segmentation_metrics.adjusted_rand_index` as below:
@@ -214,19 +240,29 @@ Matthey, L., Botvinick, M., & Lerchner, A. (2019). Multi-Object Representation
 Learning with Iterative Variational Inference. Proceedings of the 36th
 International Conference on Machine Learning, in PMLR 97:2424-2433.
 
-[3] Rand, W. M. (1971). Objective criteria for the evaluation of clustering
+[3] Kabra, R., Zoran, D., Erdogan, G., Matthey, L., Creswell, A., Botvinick, M.,
+Lerchner, A., & Burgess, C. P. (2021). SIMONe: View-Invariant,
+Temporally-Abstracted Object Representations via Unsupervised Video
+Decomposition. Advances in Neural Information Processing Systems.
+
+[4] Rand, W. M. (1971). Objective criteria for the evaluation of clustering
 methods. Journal of the American Statistical association, 66(336), 846-850.
 
-[4] Eslami, S., Rezende, D. J., Besse, F., Viola, F., Morcos, A., Garnelo, M.,
+[5] Eslami, S., Rezende, D. J., Besse, F., Viola, F., Morcos, A., Garnelo, M.,
 Ruderman, A., Rusu, A., Danihelka, I., Gregor, K., Reichert, D., Buesing, L.,
 Weber, T., Vinyals, O., Rosenbaum, D., Rabinowitz, N., King, H., Hillier, C.,
 Botvinick, M., Wierstra, D., Kavukcuoglu, K., & Hassabis, D. (2018). Neural
 scene representation and rendering. Science, 360(6394), 1204-1210.
 
-[5] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
+[6] Johnson, J., Hariharan, B., van der Maaten, L., Fei-Fei, L., Lawrence
 Zitnick, C., & Girshick, R. (2017). Clevr: A diagnostic dataset for
 compositional language and elementary visual reasoning. In Proceedings of the
 IEEE Conference on Computer Vision and Pattern Recognition (pp. 2901-2910).
+
+[7] Girdhar, R., & Ramanan, D. (2019, September). CATER: A diagnostic dataset
+for Compositional Actions & TEmporal Reasoning. In International Conference on
+Learning Representations.
+
 
 ## Disclaimers
 
