@@ -14,7 +14,7 @@
 # ============================================================================
 """Implementation of the adjusted Rand index."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def adjusted_rand_index(true_mask, pred_mask, name='ari_score'):

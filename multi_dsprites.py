@@ -15,7 +15,7 @@
 """Multi-dSprites dataset reader."""
 
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 COMPRESSION_TYPE = tf.io.TFRecordOptions.get_compression_type_string('GZIP')
