@@ -147,7 +147,7 @@ To download all datasets, you'll need the `gsutil` tool, which comes with the
 [Google Cloud SDK](https://cloud.google.com/sdk/docs/). Simply run:
 
 ```shell
-  gsutil cp -r gs://multi-object-datasets .
+  gcloud storage cp --recursive gs://multi-object-datasets .
 ```
 
 The approximate download sizes are:
