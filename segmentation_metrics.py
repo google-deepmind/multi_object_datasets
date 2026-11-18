@@ -65,7 +65,6 @@ def adjusted_rand_index(true_mask, pred_mask, name='ari_score'):
           "the special cases that can occur when you have one cluster "
           "per datapoint.")
 
-    true_group_ids = tf.argmax(true_mask, -1)
     pred_group_ids = tf.argmax(pred_mask, -1)
     # We convert true and predicted clusters to one-hot ('oh') representations.
     true_mask_oh = tf.cast(true_mask, tf.float32)  # already one-hot
@@ -84,14 +83,11 @@ def adjusted_rand_index(true_mask, pred_mask, name='ari_score'):
     max_rindex = (aindex + bindex) / 2
     ari = (rindex - expected_rindex) / (max_rindex - expected_rindex)
 
-    # The case where n_true_groups == n_pred_groups == 1 needs to be
-    # special-cased (to return 1) as the above formula gives a divide-by-zero.
-    # This might not work when true_mask has values that do not sum to one:
+    # Check only labeled points, as in the contingency table above. Identical
+    # one-cluster or all-singleton partitions both have an undefined ratio.
     both_single_cluster = tf.logical_and(
-        _all_equal(true_group_ids), _all_equal(pred_group_ids))
-    return tf.where(both_single_cluster, tf.ones_like(ari), ari)
-
-
-def _all_equal(values):
-  """Whether values are all equal along the final axis."""
-  return tf.reduce_all(tf.equal(values, values[..., :1]), axis=-1)
+        tf.equal(tf.reduce_max(a, axis=1), n_points),
+        tf.equal(tf.reduce_max(b, axis=1), n_points))
+    both_all_singletons = tf.equal(max_rindex, 0.)
+    return tf.where(tf.logical_or(both_single_cluster, both_all_singletons),
+                    tf.ones_like(ari), ari)
